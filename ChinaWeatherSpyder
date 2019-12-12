@@ -1,0 +1,68 @@
+# coding:utf-8
+import requests
+from bs4 import BeautifulSoup
+from lxml import etree
+from pyecharts.charts import Bar
+
+
+class ChinaWeatherSpder(object):
+    ALL_DATA = []
+
+    def __init__(self):
+        self.url = 'http://www.weather.com.cn/textFC/hb.shtml#'
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36'
+        }
+
+    def get_url_list(self):
+        response = requests.get(self.url, headers=self.headers)
+        html = response.content.decode()
+        html = etree.HTML(html)
+
+        url_list = html.xpath('//li//span//a/@href')
+        for url in url_list:
+            url = 'http://www.weather.com.cn' + url
+            self.parse_url(url)
+
+    def parse_url(self, url):
+        response = requests.get(url, headers=self.headers)
+        html = response.content.decode()
+        bs = BeautifulSoup(html, 'html5lib')
+        conMidtab = bs.find('div', class_='conMidtab')
+        tables = conMidtab.find_all('table')
+        for table in tables:
+            trs = table.find_all('tr')[2:]
+            for index, tr in enumerate(trs):
+                tds = tr.find_all('td')
+                city_td = tds[0]
+                if index == 0:
+                    city_td = tds[1]
+                city = list(city_td.stripped_strings)[0]
+                temp_td = tds[-2]
+                min_temp = list(temp_td.stripped_strings)[0]
+                ChinaWeatherSpder.ALL_DATA.append({'city': city, 'min_temp': int(min_temp)})
+                ChinaWeatherSpder.ALL_DATA.sort(key=lambda data: data['min_temp'])
+
+    def run(self):
+        self.get_url_list()
+
+        data = ChinaWeatherSpder.ALL_DATA[0:10]
+        bar = Bar()
+        x_list = []
+        y_list = []
+        for dict in data:
+            x = dict['city']
+            x_list.append(x)
+            y = dict['min_temp']
+            y_list.append(y)
+
+        bar.add_xaxis(x_list)
+        bar.add_yaxis("中国最低温度排行榜", y_list)
+        # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
+        # 也可以传入路径参数，如 bar.render("mycharts.html")
+        bar.render()
+
+
+if __name__ == '__main__':
+    china_weather = ChinaWeatherSpder()
+    china_weather.run()
