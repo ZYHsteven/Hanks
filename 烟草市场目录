@@ -1,0 +1,44 @@
+# coding:utf-8
+import requests
+from lxml import etree
+import itertools
+
+
+class CigSpyder(object):
+
+    def __init__(self):
+        self.cig_dict = {}
+        self.page_num = 0
+        self.i = 0
+        self.y = 0
+
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36'
+        }
+
+    def get_url_list(self):
+        for self.page_num in range(1, 354):
+            url = 'http://www.etmoc.com/Firms/Brands?page={}'.format(self.page_num)
+            self.parse_url(url)
+            self.page_num += 1
+            # break
+
+    def parse_url(self, url):
+        response = requests.get(url, headers=self.headers)
+        html = response.content.decode()
+        html = etree.HTML(html)
+        cig_name_list = html.xpath('//div[@class="li-p-t"]/a[@target="_blank"]/text()')
+        cig_price_list = html.xpath('//div[@class="li-p-p"]/p/text()')
+
+        for cig_name, cig_price in itertools.zip_longest(cig_name_list, cig_price_list):
+            print(cig_name, cig_price)
+
+        print('爬取完第{}'.format(self.page_num))
+
+    def run(self):
+        self.get_url_list()
+
+
+if __name__ == '__main__':
+    cigspyder = CigSpyder()
+    cigspyder.run()
